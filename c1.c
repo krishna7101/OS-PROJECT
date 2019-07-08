@@ -1,60 +1,95 @@
-#include<pthread.h>
-#include <stdio.h>
+#include<stdio.h>
 #include<stdlib.h>
+#include<pthread.h>
+#include<unistd.h>
+#include<sys/types.h>
+#include<sys/wait.h>
+#include<semaphore.h> 
 
-struct station {
-	//condition variables
-	struct condition *confirm_arrival, *confirm_passengers_seated;
-	//shared_variables
-	int passengers_waiting;
-	int seats_empty;
-	int passengers_boarding;
-	//lock_variable
-	pthread_mutex_t l;
-};
-
-
-void station_wait_for_train(struct station *station)
+int allPassangersSeated =0; 
+int trainArrived = 0; 
+int leftover =0;
+struct station
+{	
+	int noOfSeatsLeft;
+	//int passangersId[noOfSeatsLeft];	
+	int waitingPassangers;
+	int seatedPassangers;
+	sem_t lock;	
+}S;
+  
+void station_init()
 {
-	pthread_mutex_lock(station->l);
-	
-	station.passengers_waiting = (station.passengers_waiting + 1);
-	
-	
-	while (station.seats_empty==station.passengers_boarding)
+	printf("Enter the train's Capacity: ");
+	scanf("%d",&S.noOfSeatsLeft);
+	if(S.noOfSeatsLeft==0)
 	{
-		//check 1. train arrived 
-		//2. lock is acquired
-		station.passengers_boarding = (station.passengers_boardiong + 1);
-		station.passengers_waiting = (station.passengers_waiting - 1);
-		
-		pthread_mutex_unlock(station->l);
+		printf("Train is already FULL!!!\n");
+		exit(0);
 	}
-
+	if(S.noOfSeatsLeft<0)
+	{
+		printf("Seats cannot be negative!!\n");
+		exit(0);
+	}
+	//printf("\n %d\n",S.noOfSeatsLeft);
+	
+	printf("Enter the No. of Passangers that are willing to board at Station: ");
+	scanf("%d",&S.waitingPassangers);
+	if(S.waitingPassangers<0)
+	{
+		printf("Passangers cannot be negative!!\n");
+		exit(0);
+	}
+	if(S.waitingPassangers>S.noOfSeatsLeft)
+	{
+		leftover = S.waitingPassangers-S.noOfSeatsLeft;
+		printf("%d passangers will be left at Station.\n",leftover);
+		S.waitingPassangers=S.noOfSeatsLeft;
+				
+	}
+	//printf("\n %d\n",S.waitingPassangers);	
 }
 
-
-
-void station_on_board(struct station *station)
+void* station_load_train(void *args)
 {
-	pthread_mutex_lock(station->l);
+	printf("Train has arrived at the station and has opened it doors!!!!!!!!!!!!\n\n ");		
+	struct station *p = (struct station *)args;
+	trainArrived = 1;
+	sleep(2*p->waitingPassangers);
+	if(allPassangersSeated ==1 || p->noOfSeatsLeft==0)
+	{
+		printf("\nSeats Left: %d\n",p->noOfSeatsLeft);
+	}
 	
-	station.passengers_boarding = (station.passengers_boardiong - 1);
 	
-	station.seats_empty = (station.seats_empty - 1);
-	
-	
-	if ((station.passengers_boardiong  == 0) || (station.seats_empty == 0))
-	//check 1. passengers_seated 
-	//2. lock 
-	
-	pthread_mutex_unlock(station->l);
 }
+int seatingcounter = 0;
+void station_on_board(struct station *st)
+{
+	seatingcounter++;
+	sem_wait(&S.lock);
+	allPassangersSeated =0;
+	st->noOfSeatsLeft--;
+	printf("%d Passangers have seated Successfully\n",seatingcounter);
+	allPassangersSeated =1;
+	sem_post(&S.lock);
+}
+
+void* station_wait_for_train(void *args)
+{
+	//printf("Passangers thread function\n\n ");		
+	struct station *p = (struct station *)args;
+	if((trainArrived == 1) && (S.noOfSeatsLeft>0))
+	{
+		station_on_board(p);	
+	}
+}
+
 
 
 int main()
-{
-
-printf("Pass\\n");
-
+{	
+	printf("\n");
+	return 0;
 }
